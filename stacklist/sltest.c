@@ -31,15 +31,17 @@ int main()
 
 	for(i = 0; i < 8; i++)
 	{
-		ln.ln_key = i;
+		ln.ln_key = i*333%24;
 		ln.ln_pdata = malloc(10);
 		memcpy(ln.ln_pdata, tmpdata, strlen(tmpdata)+1);
 		sl_add(sl, &ln);
 	}
 	ln.ln_key = 5;
 
-	sl_del(sl, &ln);
+//	sl_del(sl, &ln);
 	struct list_node *tmp;
+
+	sl_radixsort(sl);
 
 	tmp = sl->sl_fvalid;
 	do{

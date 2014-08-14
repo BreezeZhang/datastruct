@@ -8,12 +8,14 @@
 #include<stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #ifndef	MAX_NUM
 #define	MAX_NUM	1000
 #endif
 
-static	max_num = MAX_NUM;
+#define		MAX_NUM_OF_KEY	6
+#define		RADIX			10
 
 typedef	int KEYTYPE;
 
@@ -112,6 +114,9 @@ int sl_add(struct static_list *sl, struct list_node *new_ln)
 	tmp_next = sl->sl_ffree->ln_next;
 	sl->sl_ffree->ln_next = -1;             //在最后插入
 	sl->sl_ffree = sl->sl_head + tmp_next;
+
+	sl->sl_cnt++;
+	
 	return 0;
 }
 
@@ -148,7 +153,7 @@ int sl_del(struct static_list *sl, struct list_node *del_ln)
 			sl->sl_ffree = tmp;		
 
 			free(tmp->ln_pdata);			//释放数据空间
-
+			sl->sl_cnt--;
 			return (tmp - sl->sl_head);
 		}
 		if(tmp->ln_next == -1)
@@ -160,4 +165,127 @@ int sl_del(struct static_list *sl, struct list_node *del_ln)
 	return -1;
 }
 
+/*----------------------------------------------/
+ * sl_radixsort 基数排序
+ * 参数： sl 待排序的静态链表  radix  传入的基数
+ * 思路： 先分配一个节点数组，数组大小为sl的有效节点个数
+ *        然后将有效节点的key和data指针赋值到节点数组，对
+ *        其进行LSD基数排序，然后将排序后的节点数组，传入
+ *        sl中，再次进行sl的初始化，和节点next域的更新。
+ *----------------------------------------------*/
+//   思路错误，静态链表不应赋值，这样会影响效率:
+int sl_radixsort_bad(struct static_list	*sl, int radix)
+{
+	assert(sl != NULL);
 
+	if(sl->sl_cnt < 2)
+		return 1;
+
+	struct list_node *arrln = (struct list_node *)malloc(sl->sl_cnt * sizeof(struct list_node));
+	if(arrln== NULL)
+	{
+		printf("malloc failed \n");
+		return 0;
+	}
+		
+	struct list_node *tmpln = sl->sl_fvalid;
+	struct list_node *tmparrln = arrln;
+	while(1)
+	{
+		arrln->ln_key = tmpln->ln_key;
+		arrln->ln_pdata = tmpln->ln_pdata;
+		if(tmpln->ln_next == -1)
+			break;
+		tmpln = sl->sl_head + tmpln->ln_next;
+		arrln++;
+	}
+	arrln = tmparrln;
+	
+	/*开始基数排序*/
+
+
+	return 0;
+}
+
+
+int key2int(KEYTYPE key, int i)
+{
+	if(i == 0)
+		return key;
+	else
+		return key/(i*10)%10;
+}
+/*-----------------------------------------------/
+ *函数描述：对静态链表sl进行基数排序
+ *思路：  选用LSD进行排序，即分发、收集	
+ *		  分发排序时，需要保存最后一个节点的next和第一个节点
+ *		  因为静态链表节点的地址是相对的，所以可以保存在一个
+ *		  数组里，这是需要两个整形数组即可f 和 l
+ * ----------------------------------------------*/
+int sl_radixsort(struct static_list	*sl)
+{
+	assert(sl != NULL);
+
+	if(sl->sl_cnt < 2)
+		return 1;
+	
+	int j, k;
+	int i = 0;
+	int keynum = MAX_NUM_OF_KEY;
+	int arrf[RADIX];
+	int arrl[RADIX];
+	struct list_node *tmpln;
+
+	memset(arrf, -1, sizeof(int) * RADIX);
+	memset(arrl, -1, sizeof(int) * RADIX);
+
+	for(i = 0; i < keynum; i++)
+	{
+		//分配
+		tmpln = sl->sl_fvalid;
+		while(1)
+		{
+			k = key2int(tmpln->ln_key, i);
+			if(*(arrf+k) == -1)
+			{
+				*(arrf + i) = k;
+			}
+			else
+			{
+				//在遍历到第i个数据时，前i个的next都已经用过了，可以修改
+				(sl->sl_head + *(arrl + i))->ln_next = k;	
+			}
+			*(arrl + i) = k;
+
+			if(tmpln->ln_next != -1)
+			{
+				tmpln = sl->sl_head + tmpln->ln_next;
+			}
+			else
+			{
+				break;
+			}
+		}
+
+		//收集
+		for(j = 0; j < RADIX; j++)
+		{
+			if(*(arrf + j) != -1)
+				break;
+		}
+		sl->sl_fvalid = sl->sl_head + *(arrf + j);
+		tmpln = sl->sl_head + *(arrl + j);
+
+		for(j = j+1; j < RADIX; j++)
+		{
+			if(*(arrf + j) != -1)
+			{
+				tmpln->ln_next = *(arrf + j);
+				tmpln = sl->sl_head + *(arrl + j);
+			}
+		}
+		tmpln->ln_next = -1;
+	}
+
+	return 1;
+}

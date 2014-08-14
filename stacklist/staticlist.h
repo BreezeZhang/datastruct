@@ -26,4 +26,6 @@ struct list_node{
 struct static_list* sl_create(int num);	//因为实现时会浪费1个节点空间，所以NUM大于2
 int sl_del(struct static_list *sl, struct list_node *del_ln);
 int sl_add(struct static_list *sl, struct list_node *new_ln);
+int sl_radixsort(struct static_list	*sl);
+
 #endif
