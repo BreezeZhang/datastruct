@@ -210,10 +210,19 @@ int sl_radixsort_bad(struct static_list	*sl, int radix)
 
 int key2int(KEYTYPE key, int i)
 {
+	int j = 0;
+	int k = 1;
 	if(i == 0)
-		return key;
+		return key%10;
 	else
-		return key/(i*10)%10;
+	{
+
+		for(j = 0; j < i; j++)
+		{
+			k *= 10;
+		}
+		return key/i%10;
+	}
 }
 /*-----------------------------------------------/
  *函数描述：对静态链表sl进行基数排序
@@ -236,11 +245,12 @@ int sl_radixsort(struct static_list	*sl)
 	int arrl[RADIX];
 	struct list_node *tmpln;
 
-	memset(arrf, -1, sizeof(int) * RADIX);
-	memset(arrl, -1, sizeof(int) * RADIX);
-
+	
 	for(i = 0; i < keynum; i++)
 	{
+		memset(arrf, -1, sizeof(int) * RADIX);
+		memset(arrl, -1, sizeof(int) * RADIX);
+
 		//分配
 		tmpln = sl->sl_fvalid;
 		while(1)
@@ -248,14 +258,14 @@ int sl_radixsort(struct static_list	*sl)
 			k = key2int(tmpln->ln_key, i);
 			if(*(arrf+k) == -1)
 			{
-				*(arrf + i) = k;
+				*(arrf + k) = tmpln - sl->sl_head;
 			}
 			else
 			{
 				//在遍历到第i个数据时，前i个的next都已经用过了，可以修改
-				(sl->sl_head + *(arrl + i))->ln_next = k;	
+				(sl->sl_head + *(arrl + k))->ln_next = tmpln - sl->sl_head;	
 			}
-			*(arrl + i) = k;
+			*(arrl + k) = tmpln - sl->sl_head;
 
 			if(tmpln->ln_next != -1)
 			{
@@ -273,6 +283,9 @@ int sl_radixsort(struct static_list	*sl)
 			if(*(arrf + j) != -1)
 				break;
 		}
+		if(j == RADIX)
+			break;
+
 		sl->sl_fvalid = sl->sl_head + *(arrf + j);
 		tmpln = sl->sl_head + *(arrl + j);
 
@@ -288,4 +301,59 @@ int sl_radixsort(struct static_list	*sl)
 	}
 
 	return 1;
+}
+
+
+/*----------------------------------------------------------------/
+ * 函数描述： 对有序的静态链表进行插入操作
+ *			  当满足节点compare函数时,在其后插入新节点newln
+ * 思路：     可先把链表数组的下表存入一个数组中，然后进行二分查找，
+ *			  进行插入，或者直接遍历链表进行插入操作
+ *			  此函数是直接遍历插入
+ * ---------------------------------------------------------------*/
+int sl_insert(struct static_list *sl, struct list_node *new_ln, int (*compare(struct list_node *ln1, struct list_node *ln2)))
+{
+	int i = 0;
+	int tmp_next;
+	struct list_node *tmp;
+	if(new_ln->ln_pdata == NULL || sl == NULL)
+		return -1;
+	if(sl->sl_ffree->ln_next == -1)                //只剩下一个空闲节点空间时，先分配新空间
+	{
+		sl->sl_len *= 2;
+		tmp = realloc(sl->sl_head, sl->sl_len * sizeof(struct list_node));
+		if(tmp == NULL)
+		{
+			sl->sl_len /= 2;
+			return -1;
+		}
+		sl->sl_head = tmp;
+		sl->sl_ffree->ln_next = sl->sl_len/2;
+		for(i = sl->sl_len/2; i < sl->sl_len; i++)
+		{
+			(sl->sl_head + i)->ln_next = i + 1;	
+		}	
+		(sl->sl_head + sl->sl_len - 1)->ln_next = -1;
+	}
+	sl->sl_ffree->ln_pdata = new_ln->ln_pdata;
+	sl->sl_ffree->ln_key = new_ln->ln_key;
+	if(sl->sl_fvalid == NULL)
+		sl->sl_fvalid = sl->sl_ffree;
+	else
+	{
+		tmp = sl->sl_fvalid;
+		while(compare(new_ln, tmp))
+		{
+			tmp = sl->sl_head + tmp->ln_next;
+		}
+	}
+	tmp->ln_next = sl->sl_ffree - sl->sl_head;
+
+	tmp_next = sl->sl_ffree->ln_next;
+	sl->sl_ffree->ln_next = -1;             //在最后插入
+	sl->sl_ffree = sl->sl_head + tmp_next;
+
+	sl->sl_cnt++;
+	
+	return 0;
 }

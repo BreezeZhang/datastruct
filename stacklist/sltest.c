@@ -36,16 +36,16 @@ int main()
 		memcpy(ln.ln_pdata, tmpdata, strlen(tmpdata)+1);
 		sl_add(sl, &ln);
 	}
-	ln.ln_key = 5;
+	ln.ln_key = 12;
 
-//	sl_del(sl, &ln);
+	sl_del(sl, &ln);
 	struct list_node *tmp;
 
 	sl_radixsort(sl);
 
 	tmp = sl->sl_fvalid;
 	do{
-		printf("sl key: %d , sl data: %s; ln next is:%d\n", tmp->ln_key, tmp->ln_pdata, tmp->ln_next);
+		printf("sl id is: %d, sl key: %d , sl data: %s; ln next is:%d\n", tmp - sl->sl_head, tmp->ln_key, tmp->ln_pdata, tmp->ln_next);
 		if(tmp->ln_next == -1)
 			break;
 		tmp = sl->sl_head + tmp->ln_next;
